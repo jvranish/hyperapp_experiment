@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width initial-scale=1'>
+  <script type="module">
+    import { h, text, app } from "./hyperapp.js";
+    import html from "./hyperlit.js";
+
+    // TODO hyperlit
+    // add styles
+    // TODO typescript?
+
+    // class CurriedLens {
+    //   constructor(state, lens) {
+    //     this.state = state;
+    //     this.lens = lens;
+    //   }
+
+    //   get() {
+    //     return this.lens.get(this.state);
+    //   }
+
+    //   set(u) {
+    //     return this.lens.set(this.state, u);
+    //   }
+
+    //   update(f) {
+    //     return this.lens.update(this.state, f);
+    //   }
+    // }
+
+    // CurriedLens(state)("counts")(i)
+    // CurriedLens(state).counts[i]()
+    // state.counts[i]
+    // const curriedLens = (state) => {
+    //   const handler = {
+    //     get: function (target, prop, receiver) {
+    //       if (target.map != undefined) {
+
+    //       } else {
+    //         [prop]
+    //       }
+    //     }
+    //   };
+
+    //   return new Proxy(state, handler);
+    // }
+
+    class Lens {
+      constructor({get, set}) {
+        this.get = get;
+        this.set = set;
+        this.update = (s, f) =>this.set(s, f(this.get(s)));
+        this.lens = this;
+      }
+
+      // TODO make field and array the same method?
+      static array(i) {
+        return new Lens({
+          get: (a) => a[i],
+          set: (a, new_e) => {
+            if (a.map === undefined) {
+              return { ...a, [i]: new_e };
+            }
+            return a.map((item, index) => {
+              if (index !== i) {
+                return item;
+              }
+
+              return new_e;
+            });
+          }
+        });
+      }
+
+      static field(name) {
+        return new Lens({ get: (s) => s[name], set: (s, u) => ({ ...s, [name]: u })});
+      }
+
+      array(i) {
+        return this.compose(Lens.array(i))
+      }
+
+      field(name) {
+        return this.compose(Lens.field(name))
+      }
+
+      static reducer(f) {
+        return (l) => (state, ...args) => l.update(state, (s) => f(s, ...args))
+      }
+
+      props(state) {
+        return {value: this.get(state), state: state, lens: this};
+      }
+
+      compose(other) {
+        return new Lens({
+          get: (x) => other.get(this.get(x)),
+          set:(x, u) => this.set(x, other.set(this.get(x), u))
+        });
+      }
+
+    }
+
+    // lens("count")(i)()
+    const lens = (q) => (r) => {
+      let foo = Lens.array(q);
+      if (r === undefined) {
+        return foo
+      } else {
+        return (s) => foo.compose(lens(r)(s));
+      }
+    }
+
+    const inc = Lens.reducer(count => count + 1);
+
+    const dec = Lens.reducer(count => count - 1);
+
+    // const inc = (l) => (state) => {
+    //   return l.curry(state).update((count) => count + 1);
+    // };
+    // // const dec = (state) => ({ ...state, count: state.count - 1 });
+    // const dec = (l) => (state) => {
+    //   return l.curry(state).update((count) => count - 1);
+    // };
+
+    // const Counter = (l) => (state) => {
+    //   return h("div", {}, [
+    //     h("h4", {}, text(l.get(state))),
+    //     h("button", { onclick: inc(l) }, text("Inc")),
+    //     h("button", { onclick: dec(l) }, text("Dec")),
+    //   ]);
+    // }
+
+
+    const Counter = ({value, state, lens}) => {
+      return html`
+      <div>
+        <h4>${value}</h4>
+        <button onclick=${inc(lens)}>Inc</button>
+        <button onclick=${dec(lens)}>Dec</button>
+      </div>`;
+      // return h("div", {}, [
+      //   h("h4", {}, text(value)),
+      //   h("button", { onclick: inc(lens) }, text("Inc")),
+      //   h("button", { onclick: dec(lens) }, text("Dec")),
+      // ]);
+    }
+
+
+    const AddTodo = (state) => ({
+      ...state,
+      counts: state.counts.concat(0),
+    })
+
+    const NewValue = (state, event) => ({
+      ...state,
+      value: event.target.value,
+    })
+
+    const counts = { get: (v) => v.counts, set: (v, new_counts) => ({ ...v, counts: new_counts }) };
+    const arrayLens = (i) => ({
+      get: (a) => a[i],
+      set: (a, new_e) => {
+        return a.map((item, index) => {
+          if (index !== i) {
+            return item;
+          }
+
+          return new_e;
+        });
+      }
+    });
+
+    const compose = (a, b) => ({
+      get: (x) => b.get(a.get(x)), 
+      set: (x, u) => a.set(x, b.set(a.get(x), u))
+    });
+
+//Lens.field("counts").array(i)
+//lens("counts")(i)()
+    app({
+      init: { todos: [], value: "", counts: [] },
+      view: (state) =>
+        h("main", {}, [
+          h("input", { type: "text", oninput: NewValue, value: state.value }),
+          h("button", { onclick: AddTodo }, text("Add")),
+          h("ul", {},
+            state.counts.map((count, i) => Counter({...Lens.field("counts").array(i).props(state)}))
+            // Counter(Lens.field("counts").compose(Lens.array(i)))(state))
+            // todos.map((todo) => h("li", {}, text(todo)))
+          ),
+        ]),
+      node: document.getElementById("app"),
+    })
+  </script>
+</head>
+
+<body>
+  <main id="app"></main>
+</body>
+
+</html>
