@@ -11,42 +11,6 @@
     // add styles
     // TODO typescript?
 
-    // class CurriedLens {
-    //   constructor(state, lens) {
-    //     this.state = state;
-    //     this.lens = lens;
-    //   }
-
-    //   get() {
-    //     return this.lens.get(this.state);
-    //   }
-
-    //   set(u) {
-    //     return this.lens.set(this.state, u);
-    //   }
-
-    //   update(f) {
-    //     return this.lens.update(this.state, f);
-    //   }
-    // }
-
-    // CurriedLens(state)("counts")(i)
-    // CurriedLens(state).counts[i]()
-    // state.counts[i]
-    // const curriedLens = (state) => {
-    //   const handler = {
-    //     get: function (target, prop, receiver) {
-    //       if (target.map != undefined) {
-
-    //       } else {
-    //         [prop]
-    //       }
-    //     }
-    //   };
-
-    //   return new Proxy(state, handler);
-    // }
-
     class Lens {
       constructor({get, set}) {
         this.get = get;
@@ -60,6 +24,7 @@
         return new Lens({
           get: (a) => a[i],
           set: (a, new_e) => {
+            // TODO should I get rid of this? or get rid of `field`?
             if (a.map === undefined) {
               return { ...a, [i]: new_e };
             }
@@ -90,6 +55,10 @@
         return (l) => (state, ...args) => l.update(state, (s) => f(s, ...args))
       }
 
+      reducer(f) {
+        return Lens.reducer(f)(this);
+      }
+
       props(state) {
         return {value: this.get(state), state: state, lens: this};
       }
@@ -103,7 +72,6 @@
 
     }
 
-    // lens("count")(i)()
     const lens = (q) => (r) => {
       let foo = Lens.array(q);
       if (r === undefined) {
@@ -117,23 +85,6 @@
 
     const dec = Lens.reducer(count => count - 1);
 
-    // const inc = (l) => (state) => {
-    //   return l.curry(state).update((count) => count + 1);
-    // };
-    // // const dec = (state) => ({ ...state, count: state.count - 1 });
-    // const dec = (l) => (state) => {
-    //   return l.curry(state).update((count) => count - 1);
-    // };
-
-    // const Counter = (l) => (state) => {
-    //   return h("div", {}, [
-    //     h("h4", {}, text(l.get(state))),
-    //     h("button", { onclick: inc(l) }, text("Inc")),
-    //     h("button", { onclick: dec(l) }, text("Dec")),
-    //   ]);
-    // }
-
-
     const Counter = ({value, state, lens}) => {
       return html`
       <div>
@@ -144,18 +95,16 @@
     }
 
 
-    const AddTodo = Lens.reducer(counts => counts.concat(0))(Lens.field("counts"))
+    const AddTodo = Lens.field("counts").reducer(counts => counts.concat(0));
 
 
-//Lens.field("counts").array(i)
-//lens("counts")(i)()
     app({
       init: { todos: [], value: "", counts: [] },
       view: (state) => html`
       <main>
         <button onclick=${AddTodo}>Add</button>
         <ul>
-          ${state.counts.map((count, i) => Counter({ ...Lens.field("counts").array(i).props(state) }))}
+          ${state.counts.map((count, i) => Counter({ ...lens("counts")(i)().props(state) }))}
         </ul>
       </main>`,
       node: document.getElementById("app"),
