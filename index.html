@@ -4,7 +4,7 @@
   <meta charset='UTF-8'>
   <meta name='viewport' content='width=device-width initial-scale=1'>
   <script type="module">
-    import { h, text, app } from "./hyperapp.js";
+    import { app } from "./hyperapp.js";
     import html from "./hyperlit.js";
 
     // TODO hyperlit
@@ -141,57 +141,23 @@
         <button onclick=${inc(lens)}>Inc</button>
         <button onclick=${dec(lens)}>Dec</button>
       </div>`;
-      // return h("div", {}, [
-      //   h("h4", {}, text(value)),
-      //   h("button", { onclick: inc(lens) }, text("Inc")),
-      //   h("button", { onclick: dec(lens) }, text("Dec")),
-      // ]);
     }
 
 
-    const AddTodo = (state) => ({
-      ...state,
-      counts: state.counts.concat(0),
-    })
+    const AddTodo = Lens.reducer(counts => counts.concat(0))(Lens.field("counts"))
 
-    const NewValue = (state, event) => ({
-      ...state,
-      value: event.target.value,
-    })
-
-    const counts = { get: (v) => v.counts, set: (v, new_counts) => ({ ...v, counts: new_counts }) };
-    const arrayLens = (i) => ({
-      get: (a) => a[i],
-      set: (a, new_e) => {
-        return a.map((item, index) => {
-          if (index !== i) {
-            return item;
-          }
-
-          return new_e;
-        });
-      }
-    });
-
-    const compose = (a, b) => ({
-      get: (x) => b.get(a.get(x)), 
-      set: (x, u) => a.set(x, b.set(a.get(x), u))
-    });
 
 //Lens.field("counts").array(i)
 //lens("counts")(i)()
     app({
       init: { todos: [], value: "", counts: [] },
-      view: (state) =>
-        h("main", {}, [
-          h("input", { type: "text", oninput: NewValue, value: state.value }),
-          h("button", { onclick: AddTodo }, text("Add")),
-          h("ul", {},
-            state.counts.map((count, i) => Counter({...Lens.field("counts").array(i).props(state)}))
-            // Counter(Lens.field("counts").compose(Lens.array(i)))(state))
-            // todos.map((todo) => h("li", {}, text(todo)))
-          ),
-        ]),
+      view: (state) => html`
+      <main>
+        <button onclick=${AddTodo}>Add</button>
+        <ul>
+          ${state.counts.map((count, i) => Counter({ ...Lens.field("counts").array(i).props(state) }))}
+        </ul>
+      </main>`,
       node: document.getElementById("app"),
     })
   </script>
