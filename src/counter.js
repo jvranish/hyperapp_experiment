@@ -1,4 +1,4 @@
-import html from "./hyperlit.js";
+import html from "./hyperapp/hyperlit.js";
 import { Lens } from "./lens.js";
 
 const inc = Lens.reducer((count) => count + 1);

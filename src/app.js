@@ -1,5 +1,5 @@
-import { app } from "./hyperapp.js";
-import html from "./hyperlit.js";
+import { app } from "./hyperapp/hyperapp.js";
+import html from "./hyperapp/hyperlit.js";
 import { Lens } from "./lens.js";
 import { counterInit, Counter } from "./counter.js";
 
@@ -11,6 +11,7 @@ const addCounter = (state) => ({
 const newName = Lens.field("next_counter_name").reducer(
   (_old_name, _state, event) => event.target.value
 );
+
 const initial_state = { next_counter_name: "", counts: [] };
 
 const main = state => html`
